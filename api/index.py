@@ -4,11 +4,11 @@ from tinyredis import TinyRedis
 
 xtra_css = Style(':root { --pico-font-size: 100%; }')
 app = FastHTML(secret_key=os.getenv('SESSKEY', 's3kret'),
-               hdrs=[picolink, xtra_css])
+               hdrs=[picolink, xtra_css, SortableJS('.sortable')])
 rt = app.route
 
 @dataclass
-class Todo: id:str=None; title:str=''; done:bool=False
+class Todo: id:str=None; title:str=''; done:bool=False; priority:int=0
 todos = TinyRedis(redis.from_url(os.environ['VERCEL_KV_URL']), Todo)
 def tid(id): return f'todo-{id}'
 
@@ -17,7 +17,8 @@ def __xt__(self:Todo):
     show = AX(self.title, f'/todos/{self.id}', 'current-todo')
     edit = AX('edit',     f'/edit/{self.id}' , 'current-todo')
     dt = ' ✅' if self.done else ''
-    return Li(show, dt, ' | ', edit, id=tid(self.id))
+    cts = (dt, show, ' | ', edit, Hidden(id="id", value=self.id), Hidden(id="priority", value="0"))
+    return Li(*cts, id=f'todo-{self.id}')
 
 def mk_input(**kw): return Input(id="new-title", name="title", placeholder="New Todo", **kw)
 
@@ -25,10 +26,19 @@ def mk_input(**kw): return Input(id="new-title", name="title", placeholder="New 
 async def get():
     add = Form(Group(mk_input(), Button("Add")),
                hx_post="/", target_id='todo-list', hx_swap="beforeend")
-    card = Card(Ul(*todos(), id='todo-list'),
-                header=add, footer=Div(id='current-todo')),
+    items = sorted(todos(), key=lambda o: o.priority)
+    frm = Form(*items, id='todo-list', cls='sortable', hx_post="/reorder", hx_trigger="end")
+    card = Card(Ul(frm), header=add, footer=Div(id='current-todo')),
     title = 'Todo list'
     return Title(title), Main(H1(title), card, cls='container')
+
+@rt("/reorder")
+def post(id:list[str]):
+    items = todos()
+    pos = {u:i for i,u in enumerate(id)}
+    for o in items: o.priority=pos[o.id]
+    todos.insert_all(items)
+    return tuple(sorted(items, key=lambda o: o.priority))
 
 @rt("/todos/{id}")
 async def delete(id:str):
