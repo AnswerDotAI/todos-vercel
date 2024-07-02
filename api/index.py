@@ -28,9 +28,7 @@ async def get():
                hx_post="/", target_id='todo-list', hx_swap="beforeend")
     items = sorted(todos(), key=lambda o: o.priority)
     frm = Form(*items, id='todo-list', cls='sortable', hx_post="/reorder", hx_trigger="end")
-    card = Card(Ul(frm), header=add, footer=Div(id='current-todo')),
-    title = 'Todo list'
-    return Title(title), Main(H1(title), card, cls='container')
+    return Titled('Todo list', Card(Ul(frm), header=add, footer=Div(id='current-todo')))
 
 @rt("/reorder")
 def post(id:list[str]):
