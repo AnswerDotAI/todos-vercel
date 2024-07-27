@@ -13,7 +13,7 @@ todos = TinyRedis(redis.from_url(os.environ['VERCEL_KV_URL']), Todo)
 def tid(id): return f'todo-{id}'
 
 @patch
-def __xt__(self:Todo):
+def __ft__(self:Todo):
     show = AX(self.title, f'/todos/{self.id}', 'current-todo')
     edit = AX('edit',     f'/edit/{self.id}' , 'current-todo')
     dt = ' ✅' if self.done else ''
